@@ -9,33 +9,28 @@ import (
 )
 
 var serialSeed uint64
-var lastGenTime int64
+var lastGenDay string
 var serialSeedMutex sync.Mutex
 
-func getSerialSeed(tm int64) uint64 {
+func getSerialSeed(day string) uint64 {
 	serialSeedMutex.Lock()
 	defer serialSeedMutex.Unlock()
 
-	if 0 == lastGenTime {
-		// first time to generate serial
+	// another day , intialize serial
+	if day != lastGenDay {
 		serialSeed = 0
+		lastGenDay = day
 	} else {
-		if tm-lastGenTime != 0 {
-			// intialize serial
-			serialSeed = 0
-		} else {
-			serialSeed++
-		}
+		serialSeed++
 	}
-	lastGenTime = tm
 
 	return serialSeed
 }
 
 // GenSerial get a new serial id
 func GenSerial() string {
-	tm := time.Now().Unix()
-	serial := fmt.Sprintf("%d%07d", tm, getSerialSeed(tm))
+	day := time.Now().Format("060102")
+	serial := fmt.Sprintf("%s%04d", day, getSerialSeed(day))
 	return serial
 }
 
