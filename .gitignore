@@ -1,1 +1,5 @@
 .vscode/launch.json
+*.dev.*
+*.exe
+*.exe~
+debug.test

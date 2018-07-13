@@ -13,6 +13,30 @@
     },
     "tasks": [
         {
+            "taskName": "build_bmcmd",
+            "suppressTaskName": true,
+            "isBuildCommand": true,
+            "args": [
+                "vscgo_build",
+                "${workspaceRoot}/../../../../",
+                "${workspaceRoot}"
+            ],
+            "isWatching": false,
+            "problemMatcher": {
+                "owner": "go",
+                "fileLocation": [
+                    "relative",
+                    "${fileDirname}"
+                ],
+                "pattern": {
+                    "regexp": "^(.*):(\\d+):\\s+(.*)$",
+                    "file": 1,
+                    "line": 2,
+                    "message": 3
+                }
+            }
+        },
+        {
             "taskName": "vscgo_build",
             "isBuildCommand": true,
             "args": [
