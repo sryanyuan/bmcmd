@@ -69,6 +69,7 @@ func CreateCmdTolua() *cobra.Command {
 	var toluaIniFile string
 	var toluaOutputFile string
 	var toluaIniType string
+	var toluaDropFile string
 	var toluaCmd = &cobra.Command{
 		Use:   "tolua",
 		Short: "Generate lua file from ini config files",
@@ -81,12 +82,15 @@ func CreateCmdTolua() *cobra.Command {
 				return
 			}
 			if toluaIniType == "item" {
-				if err := genItemLuaFile(toluaIniFile, toluaOutputFile, toluaIniType); nil != err {
+				if err := genItemLuaFile(toluaIniFile, toluaOutputFile); nil != err {
 					log.Println(err)
 					return
 				}
 			} else if toluaIniType == "mons" {
-
+				if err := genMonsLuaFile(toluaIniFile, toluaOutputFile, toluaDropFile); nil != err {
+					log.Println(err)
+					return
+				}
 			} else {
 				log.Println("invalid type", toluaIniType)
 				return
@@ -96,6 +100,7 @@ func CreateCmdTolua() *cobra.Command {
 	toluaCmd.Flags().StringVarP(&toluaIniFile, "inifile", "i", "", "input item ini file")
 	toluaCmd.Flags().StringVarP(&toluaOutputFile, "output", "o", "", "output lua file")
 	toluaCmd.Flags().StringVarP(&toluaIniType, "type", "t", "", "type of ini (item/mons)")
+	toluaCmd.Flags().StringVarP(&toluaDropFile, "drop", "d", "", "optional drop file")
 
 	return toluaCmd
 }

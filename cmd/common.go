@@ -37,5 +37,5 @@ func readIniFile(filename string) (*ini.File, error) {
 		return nil, errors.New("Transcode to utf-8 failed")
 	}
 
-	return ini.Load(fileData)
+	return ini.InsensitiveLoad(fileData)
 }

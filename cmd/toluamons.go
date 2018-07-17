@@ -8,21 +8,22 @@ import (
 	"io"
 	"log"
 	"os"
+	"strconv"
+	"strings"
 
 	"github.com/axgle/mahonia"
 	"github.com/go-ini/ini"
 )
 
-const luaItemFileHeader = `-- This file is auto generate by initolua tools , DO NOT EDIT
-config_constItemAttrib = {
+const luaMonsFileHeader = `-- This file is auto generate by initolua tools , DO NOT EDIT
+config_constMonsAttrib = {
 `
 
-const luaItemRenderTpl = `-- const attrib of Item iD [{{.ID}}] name [{{.Name}}]
+const luaMonsRenderTpl = `-- const attrib of mons iD [{{.ID}}] name [{{.Name}}]
 	[{{.ID}}] = {
 		ID = {{.ID}},
 		Name = "{{.Name}}" ,
 		Type = {{.Type}},
-		TypeString = "{{.TypeString}}",
 		{{if ne .Lucky 0}}Lucky = {{.Lucky}},
 		{{end}}{{if ne .Curse 0}}Curse = {{.Curse}},
 		{{end}}{{if ne .Hide 0}}Hide = {{.Hide}},
@@ -54,18 +55,20 @@ const luaItemRenderTpl = `-- const attrib of Item iD [{{.ID}}] name [{{.Name}}]
 		{{end}}{{if ne .Level 0}}Level = {{.Level}},
 		{{end}}{{if ne .Tex 0}}Tex = {{.Tex}},
 		{{end}}{{if ne .Price 0}}Price = {{.Price}},
-		{{end}}{{if ne .Grade 0}}Grade = {{.Grade}},
-		{{end}}Desc = "{{.Desc}}"
+		{{end}}Desc = "{{.Desc}}",
+		DropItems = { {{range .DropItems}}
+			{Item = "{{.Name}}", Prob = {{.Prob}}},{{end}}
+		}
 	},
 `
 
-const luaItemFileTail = `
+const luaMonsFileTail = `
 }
 `
 
-func writeItems(buf io.Writer, sec *ini.Section) error {
+func writeMons(buf io.Writer, sec *ini.Section, dropSec *ini.Section) error {
 	var err error
-	var citem itemCommon
+	var citem monsCommon
 	if err = citem.read(sec); nil != err {
 		return err
 	}
@@ -74,15 +77,33 @@ func writeItems(buf io.Writer, sec *ini.Section) error {
 		return fmt.Errorf("Item type %d not found", citem.Type)
 	}
 	citem.TypeString = itemChName
+	citem.DropItems = make([]dropItem, 0)
+	// Load drop items
+	if nil != dropSec {
+		keys := dropSec.Keys()
+		citem.DropItems = make([]dropItem, len(keys))
+		for i, k := range keys {
+			value := k.MustString("")
+			if "" == value {
+				continue
+			}
+			substrs := strings.Split(value, "|")
+			if len(substrs) != 2 {
+				return errors.New("Invalid drop item content")
+			}
+			citem.DropItems[i].Name = substrs[0]
+			citem.DropItems[i].Prob, _ = strconv.Atoi(substrs[1])
+		}
+	}
 
-	if err = renderItemToBuffer(buf, &citem, luaItemRenderTpl); nil != err {
+	if err = renderMonsToBuffer(buf, &citem, luaMonsRenderTpl); nil != err {
 		return err
 	}
 	return nil
 }
 
-func renderItemToBuffer(buf io.Writer, si itemInterface, tpl string) error {
-	t := template.New("item_tpl")
+func renderMonsToBuffer(buf io.Writer, si itemInterface, tpl string) error {
+	t := template.New("mons_tpl")
 	var err error
 	if t, err = t.Parse(tpl); nil != err {
 		return err
@@ -93,18 +114,30 @@ func renderItemToBuffer(buf io.Writer, si itemInterface, tpl string) error {
 	return err
 }
 
-func genItemLuaFile(input, output string) error {
+func genMonsLuaFile(input, output, drop string) error {
 	iniFile, err := readIniFile(input)
 	buf := bytes.NewBuffer(make([]byte, 0, 1024))
-	if _, err = buf.Write([]byte(luaItemFileHeader)); nil != err {
+	if _, err = buf.Write([]byte(luaMonsFileHeader)); nil != err {
 		return err
+	}
+	// Drop ini file
+	var dropFile *ini.File
+	if "" != drop {
+		dropFile, err = readIniFile(drop)
+		if nil != err {
+			return err
+		}
 	}
 
 	sections := iniFile.Sections()
 	var successCnt int
 	var failedCnt int
 	for _, section := range sections {
-		if err = writeItems(buf, section); nil != err {
+		var dropSec *ini.Section
+		if nil != dropFile {
+			dropSec = dropFile.Section(section.Name())
+		}
+		if err = writeMons(buf, section, dropSec); nil != err {
 			log.Println("Failed to write section :", section.Name(), "error = ", err)
 			failedCnt++
 			continue
@@ -112,7 +145,7 @@ func genItemLuaFile(input, output string) error {
 		successCnt++
 	}
 
-	if _, err = buf.Write([]byte(luaItemFileTail)); nil != err {
+	if _, err = buf.Write([]byte(luaMonsFileTail)); nil != err {
 		return err
 	}
 
@@ -135,6 +168,6 @@ func genItemLuaFile(input, output string) error {
 	if nil != err {
 		return err
 	}
-	log.Printf("Task done, %d items writed, %d items failed\n", successCnt, failedCnt)
+	log.Printf("Task done, %d mons writed, %d mons failed\n", successCnt, failedCnt)
 	return nil
 }
